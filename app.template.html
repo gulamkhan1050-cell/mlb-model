@@ -1,0 +1,560 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>MLB moneyline</title>
+<style>
+:root{--bg:#0c1014;--card:#141b22;--card2:#1b242d;--line:#243039;--ink:#e8eef3;--dim:#93a3b1;--acc:#2f9e6b;--acc2:#3fb27c;--warn:#d98324;--bad:#cf4b4b;--good:#3fb27c}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding-bottom:40px}
+header{padding:16px;background:linear-gradient(160deg,#16241d,#0c1014);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+h1{margin:0;font-size:19px;letter-spacing:.2px}
+.sub{color:var(--dim);font-size:12.5px;margin-top:5px}
+.wrap{padding:12px;max-width:760px;margin:0 auto}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px;margin-bottom:11px}
+h2{margin:0 0 9px;font-size:14px;letter-spacing:.3px;text-transform:uppercase;color:var(--dim)}
+.tabs{display:flex;gap:6px;margin-bottom:11px;overflow-x:auto;padding-bottom:2px}
+.tabs button,.chips button{background:var(--card2);color:var(--ink);border:1px solid var(--line);border-radius:999px;padding:7px 13px;font-size:13px;white-space:nowrap;cursor:pointer}
+.tabs button.on,.chips button.on{background:var(--acc);border-color:var(--acc);color:#04120b;font-weight:600}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.g{border:1px solid var(--line);border-radius:11px;margin-bottom:10px;overflow:hidden;background:var(--card)}
+.gh{padding:11px 12px;background:var(--card2);cursor:pointer;display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.gt{font-weight:600;font-size:14.5px}
+.gm{color:var(--dim);font-size:12px;margin-top:3px}
+.gp{text-align:right;white-space:nowrap}
+.gp b{font-size:17px;display:block}
+.gb{padding:12px;border-top:1px solid var(--line);display:none}
+.g.open .gb{display:block}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th,td{padding:5px 6px;text-align:left;border-bottom:1px solid var(--line)}
+th{color:var(--dim);font-weight:500;font-size:11px;text-transform:uppercase}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+.pill{display:inline-block;padding:2px 7px;border-radius:999px;font-size:11px;background:var(--card2);border:1px solid var(--line);color:var(--dim)}
+.pill.g{background:rgba(63,178,124,.15);border-color:var(--acc);color:var(--good)}
+.pill.w{background:rgba(217,131,36,.15);border-color:var(--warn);color:var(--warn)}
+.pill.b{background:rgba(207,75,75,.15);border-color:var(--bad);color:var(--bad)}
+select,input{background:var(--card2);color:var(--ink);border:1px solid var(--line);border-radius:7px;padding:6px 7px;font-size:12.5px;width:100%}
+.lu{display:grid;grid-template-columns:18px 1fr;gap:5px 7px;align-items:center;margin-bottom:4px}
+.lu .o{color:var(--dim);font-size:11px;text-align:right}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:560px){.two{grid-template-columns:1fr}}
+.k{color:var(--dim);font-size:11.5px}
+.bar{height:5px;border-radius:3px;background:var(--card2);overflow:hidden;margin-top:5px}
+.bar i{display:block;height:100%;background:var(--acc2)}
+button.p{background:var(--acc);color:#04120b;border:0;border-radius:9px;padding:9px 15px;font-weight:600;font-size:13.5px;cursor:pointer}
+button.q{background:var(--card2);color:var(--ink);border:1px solid var(--line);border-radius:9px;padding:7px 12px;font-size:12.5px;cursor:pointer}
+small{color:var(--dim)}
+.warn{color:var(--warn)}.bad{color:var(--bad)}.good{color:var(--good)}
+</style>
+</head>
+<body>
+<header>
+  <h1>MLB moneyline</h1>
+  <div class="sub" id="hdr">loading&hellip;</div>
+</header>
+
+<div class="wrap">
+  <div class="tabs" id="tabs">
+    <button data-t="games" class="on">Games</button>
+    <button data-t="ratings">Ratings</button>
+    <button data-t="any">Any two teams</button>
+    <button data-t="how">How it works</button>
+  </div>
+
+  <section id="v-games">
+    <div class="chips" id="when">
+      <button data-w="today" class="on">Today</button>
+      <button data-w="yday">Yesterday</button>
+      <button data-w="7d">Next 7 days</button>
+      <button data-w="all">All</button>
+    </div>
+    <div class="card" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <button class="p" id="odds">Load odds &amp; weather</button>
+      <small id="oddsmsg">Odds come from ESPN, weather from Open-Meteo. Both need internet.</small>
+    </div>
+    <div id="games"></div>
+  </section>
+
+  <section id="v-ratings" style="display:none"></section>
+  <section id="v-any" style="display:none"></section>
+  <section id="v-how" style="display:none">
+    <div class="card"><h2>How a prediction is made</h2>
+    <p class="sub" style="margin:0 0 9px">Every team carries an Elo rating built from run margin, regressed toward the middle between seasons and adjusted for the quality of the schedule it has actually faced. Every starting pitcher carries his own Elo, updated after each start on the runs he allowed per out against the offence in front of him, at that park. Every hitter carries an Elo updated on wOBA per plate appearance against the pitcher he faced. Bullpens and team run prevention are rated the same way.</p>
+    <p class="sub" style="margin:0 0 9px">On top of the ratings the model uses starter rest, bullpen outs over the last three days, the platoon edges in the posted lineup, the hitters' own record against the man on the mound, that pitcher's record against this opponent, park run factor, altitude, temperature and the wind component blowing out to centre field, travel distance and time-zone shift, day or night, doubleheaders, series game number, head to head, last-10 and last-30 form, and how many regulars are missing from the card.</p>
+    <p class="sub" style="margin:0 0 9px">A logistic model fitted on past seasons turns all of that into a win probability for the home team. Its regularisation is chosen by out-of-fold log loss and its confidence is then rescaled by a temperature fitted on games it never trained on, because a raw model that says 80% tends to win nearer 72% &mdash; and that gap is exactly where a Kelly stake does the most damage. The result is blended with the market price using weights fitted on past games where closing prices were logged; until you log some, it falls back to a fixed 35/65 blend that leans on the market.</p>
+    <p class="sub" style="margin:0">Lineups post two to four hours before first pitch. Until they do, the app shows the nine who most recently started in each order slot &mdash; so before lineups are out, treat every number as provisional. You can change any hitter or either starter and the probability is recomputed from the ratings, not looked up.</p></div>
+  </section>
+</div>
+
+<script>
+/* load the published model, with a changing query so the phone never serves yesterday's copy from its cache */
+(function(){ var u="__MODEL_URL__"; if(!u) return; var v=new Date(); var tag=v.getUTCFullYear()+""+(v.getUTCMonth()+1)+""+v.getUTCDate()+""+v.getUTCHours();
+  document.write('<script src="'+u+(u.indexOf("?")<0?"?":"&")+"v="+tag+'" onerror="window.__modelFailed=1"><\/script>'); })();
+</script>
+<script>
+var BAKED = __MODEL_JSON__;
+var M = BAKED;
+(function(){                                   // prefer the published model when it is newer than the build
+  try{
+    var R = window.MODEL_REMOTE;
+    if(R && R.as_of && (!BAKED.as_of || R.as_of >= BAKED.as_of) && R.teams && Object.keys(R.teams).length){ M = R; M.__remote = true; }
+  }catch(e){}
+})();
+
+var T = M.teams||{}, P = M.players||{}, U = M.upcoming||[];
+var CAP = 0.72;            // a real MLB moneyline almost never deserves more than this
+var LGW = M.lg_woba||0.315, OW = M.order_w||[1.16,1.12,1.09,1.05,1,0.95,0.91,0.87,0.85], BASE = M.base||1500;
+
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];}); }
+function sig(x){ x=Math.max(-30,Math.min(30,x)); return 1/(1+Math.exp(-x)); }
+function lg(p){ p=Math.min(Math.max(p,1e-9),1-1e-9); return Math.log(p/(1-p)); }
+function pct(p){ return (p*100).toFixed(1)+"%"; }
+function nm(id){ var p=P[String(id)]; return p&&p.name?p.name:("#"+id); }
+function tn(id){ var t=T[String(id)]; return t&&t.name?t.name:("team "+id); }
+
+/* ---------- local overrides, so your edits survive a reload ---------- */
+function get(k){ try{ return JSON.parse(localStorage.getItem("mlb:"+k)||"null"); }catch(e){ return null; } }
+function set(k,v){ try{ localStorage.setItem("mlb:"+k,JSON.stringify(v)); }catch(e){} }
+
+function lineupOf(u,side){
+  var base=(u[side].lineup||[]).slice();
+  var ov=get("lineup:"+u.pk);
+  if(ov&&ov[side]&&ov[side].length===base.length) return ov[side].slice();
+  return base;
+}
+function starterOf(u,side){
+  var ov=get("sp:"+u.pk);
+  if(ov&&ov[side]) return ov[side];
+  return u[side].starter;
+}
+
+/* ---------- the feature vector, identical to the one the trainer fits on ---------- */
+function lineupElo(lu){
+  if(!lu||!lu.length) return BASE;
+  var tot=0,wt=0;
+  for(var i=0;i<Math.min(lu.length,9);i++){
+    var k=OW[i]!=null?OW[i]:1, p=P[String(lu[i])];
+    tot+=k*(p&&p.elo!=null?p.elo:BASE); wt+=k;
+  }
+  return wt?tot/wt:BASE;
+}
+function platoon(lu,oppHand){
+  var n=0;
+  for(var i=0;i<Math.min((lu||[]).length,9);i++){
+    var p=P[String(lu[i])], s=p&&p.hand?p.hand:"R";
+    if(s==="S") n++;
+    else if(oppHand==="L"&&s==="R") n++;
+    else if(oppHand==="R"&&s==="L") n++;
+  }
+  return n;
+}
+function batVsSp(u,side,lu,oppSp){
+  /* only meaningful against the starter the export was built for */
+  if(!oppSp||oppSp!==u[side==="home"?"away":"home"].starter) return null;
+  var map=u[side].bvp||{}, num=0, den=0;
+  for(var i=0;i<Math.min((lu||[]).length,9);i++){
+    var e=map[String(lu[i])];
+    if(e){ num+=e[0]; den+=e[1]; }
+  }
+  if(den<25) return 0;
+  return Math.min(den/150,1)*((num/den)-LGW)/0.05;
+}
+function spVsTeam(u,side,sp){
+  var m=u[side].spvt||{};
+  return m[String(sp)]!=null?m[String(sp)]:0;
+}
+function spRest(sp,ts){
+  var p=P[String(sp)];
+  if(!p||!p.last) return 5;
+  return Math.min((ts-p.last)/86400,12);
+}
+function missing(tid,lu){
+  /* the trainer exports the nine regulars directly, so this cannot drift out of step with it */
+  var t=T[String(tid)]; if(!t||!t.regulars||!t.regulars.length) return 0;
+  var have={}; for(var i=0;i<Math.min((lu||[]).length,9);i++) have[String(lu[i])]=1;
+  var n=0; for(var j=0;j<t.regulars.length;j++) if(!have[String(t.regulars[j])]) n++;
+  return n/9;
+}
+
+function ctxOf(u){
+  var c={}, k; for(k in u.ctx) c[k]=u.ctx[k];
+  var spH=starterOf(u,"home"), spA=starterOf(u,"away");
+  var luH=lineupOf(u,"home"), luA=lineupOf(u,"away");
+  c.sp_h = spH&&P[String(spH)]?P[String(spH)].elo:BASE;
+  c.sp_a = spA&&P[String(spA)]?P[String(spA)].elo:BASE;
+  c.lu_h = lineupElo(luH); c.lu_a = lineupElo(luA);
+  c.sp_rest_h = spRest(spH,u.ts); c.sp_rest_a = spRest(spA,u.ts);
+  var hA=(P[String(spA)]||{}).hand||"R", hH=(P[String(spH)]||{}).hand||"R";
+  c.plat_h = platoon(luH,hA); c.plat_a = platoon(luA,hH);
+  var bh=batVsSp(u,"home",luH,spA), ba=batVsSp(u,"away",luA,spH);
+  c.__bvp_unknown = (bh===null||ba===null);
+  c.bat_vs_sp_h = bh===null?0:bh; c.bat_vs_sp_a = ba===null?0:ba;
+  c.sp_vs_team_h = spVsTeam(u,"home",spH); c.sp_vs_team_a = spVsTeam(u,"away",spA);
+  c.miss_h = missing(u.home.id,luH); c.miss_a = missing(u.away.id,luA);
+  if(u.__wx){ c.temp=u.__wx.temp; c.wind_out=u.__wx.wind_out; c.air=u.__wx.air; }
+  return c;
+}
+
+function buildVector(d){
+  return [
+    (d.elo_h-d.elo_a)/100,
+    (d.sp_h-d.sp_a)/100,
+    (d.lu_h-d.lu_a)/100,
+    (d.pen_h-d.pen_a)/100,
+    (d.def_h-d.def_a)/100,
+    Math.min(d.sp_rest_h,8)/5,
+    Math.min(d.sp_rest_a,8)/5,
+    (d.fat_h-d.fat_a)/9,
+    (d.plat_h-d.plat_a)/9,
+    d.form10_h-d.form10_a,
+    d.form30_h-d.form30_a,
+    (d.sos_h-d.sos_a)/100,
+    d.wp_h-d.wp_a,
+    (Math.min(d.rest_h,4)-Math.min(d.rest_a,4))/4,
+    Math.min(d.travel_a,4000)/4000,
+    Math.abs(d.tz_a)/3,
+    d.park-1,
+    (d.temp-72)/20,
+    d.wind_out/15,
+    d.air-1,
+    d.night?1:0,
+    d.dh?1:0,
+    Math.min(d.series,4)/4,
+    d.h2h,
+    d.bat_vs_sp_h-d.bat_vs_sp_a,
+    d.sp_vs_team_h-d.sp_vs_team_a,
+    d.miss_a-d.miss_h
+  ];
+}
+
+function modelP(u){
+  var c=ctxOf(u), x=buildVector(c), z=M.b||0;
+  for(var i=0;i<x.length;i++) z += (M.w[i]||0)*((x[i]-(M.mu[i]||0))/((M.sd[i]||1)||1));
+  var raw=sig(z);
+  var p=sig((M.temp||1)*lg(raw));
+  var capped=false;
+  if(p>CAP){ p=CAP; capped=true; } else if(p<1-CAP){ p=1-CAP; capped=true; }
+  return {p:p, raw:raw, capped:capped, ctx:c, x:x};
+}
+
+function blend(pm,pmk){
+  if(pmk==null) return pm;
+  var s=M.stack;
+  if(s&&s.a!=null) return sig(s.a*lg(pm)+s.b*lg(pmk)+(s.c||0));
+  return sig(0.35*lg(pm)+0.65*lg(pmk));
+}
+
+/* ---------- money ---------- */
+function amToDec(a){ a=parseFloat(a); if(!isFinite(a)||a===0) return null; return a>0?1+a/100:1+100/Math.abs(a); }
+function devig(dh,da){ if(!dh||!da) return null; var ih=1/dh, ia=1/da, s=ih+ia; return s>0?ih/s:null; }
+function kelly(p,dec){
+  if(!dec||dec<=1) return 0;
+  var b=dec-1, f=(p*b-(1-p))/b;
+  if(f<=0) return 0;
+  var u=f*0.25*100;                 // quarter Kelly, in units of 1% bankroll
+  var edge=p*dec-1;
+  if(edge>0.08) return Math.min(u,0.5);   // an 8%+ edge on a baseball moneyline is a stale input, not an edge
+  return Math.min(u,2);
+}
+
+/* ---------- ESPN odds ---------- */
+var ODDS={};
+function side(o,keys){ for(var i=0;i<keys.length;i++){ var v=(o||{})[keys[i]]; if(v&&typeof v==="object"&&v.odds!=null) return v; } return null; }
+async function bookOdds(evId){
+  var out=[];
+  try{
+    var r=await fetch("https://sports.core.api.espn.com/v2/sports/baseball/leagues/mlb/events/"+evId+"/competitions/"+evId+"/odds?limit=50",{headers:{Accept:"application/json"}});
+    var j=await r.json(); var items=j.items||[];
+    for(var i=0;i<items.length;i++){
+      var it=items[i];
+      if(it.$ref&&!it.moneyline&&!it.homeTeamOdds){ try{ it=await (await fetch(it.$ref)).json(); }catch(e){} }
+      var K=["close","current","open"];
+      var mh=side((it.moneyline||{}).home,K)||side(it.homeTeamOdds||{},K);
+      var ma=side((it.moneyline||{}).away,K)||side(it.awayTeamOdds||{},K);
+      var dh=amToDec(mh?mh.odds:(it.homeTeamOdds||{}).moneyLine);
+      var da=amToDec(ma?ma.odds:(it.awayTeamOdds||{}).moneyLine);
+      if(dh&&da) out.push({book:((it.provider||{}).name)||"book",h:dh,a:da});
+    }
+  }catch(e){}
+  return out;
+}
+async function loadOdds(){
+  $("oddsmsg").textContent="fetching ...";
+  var days={}, i;
+  for(i=0;i<U.length;i++) days[U[i].date]=1;
+  var dates=Object.keys(days).sort().slice(0,9), got=0;
+  for(i=0;i<dates.length;i++){
+    var d=dates[i].replace(/-/g,"");
+    try{
+      var j=await (await fetch("https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard?dates="+d,{headers:{Accept:"application/json"}})).json();
+      var evs=j.events||[];
+      for(var e=0;e<evs.length;e++){
+        var ev=evs[e], comp=(ev.competitions||[])[0]||{}, cs=comp.competitors||[];
+        var hn="",an="";
+        for(var c=0;c<cs.length;c++){ var t=(cs[c].team||{}); if(cs[c].homeAway==="home") hn=t.displayName||""; else an=t.displayName||""; }
+        var books=await bookOdds(ev.id);
+        if(books.length){ ODDS[(hn+"|"+an).toLowerCase()]=books; got++; }
+      }
+    }catch(err){}
+  }
+  $("oddsmsg").textContent=got?("odds loaded for "+got+" games"):"no odds returned - ESPN may not have posted them yet";
+  await loadWeather();
+  render();
+}
+async function loadWeather(){
+  var jobs=[];
+  for(var i=0;i<U.length;i++){
+    var u=U[i];
+    if(!u.park_lat||String(u.roof||"").toLowerCase().indexOf("dome")>=0){ u.__wx={temp:72,wind_out:0,air:1}; continue; }
+    jobs.push(u);
+  }
+  for(var k=0;k<jobs.length;k++){
+    var u=jobs[k];
+    try{
+      var q="https://api.open-meteo.com/v1/forecast?latitude="+u.park_lat+"&longitude="+u.park_lon
+        +"&hourly=temperature_2m,wind_speed_10m,wind_direction_10m,surface_pressure&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=UTC&forecast_days=10";
+      var j=await (await fetch(q)).json(), H=j.hourly||{};
+      var key=new Date(u.ts*1000).toISOString().slice(0,13)+":00";
+      var idx=(H.time||[]).indexOf(key);
+      if(idx<0) continue;
+      var temp=H.temperature_2m[idx], wind=H.wind_speed_10m[idx], dir=H.wind_direction_10m[idx], pres=H.surface_pressure[idx];
+      var wout=wind*Math.cos((dir-(u.park_bearing||0)+180)*Math.PI/180);
+      var air=(pres/1013)*(288/(273+(temp-32)*5/9))*Math.exp(-(u.park_elev||0)/8500);
+      u.__wx={temp:temp,wind_out:wout,air:air,wind:wind,dir:dir};
+    }catch(e){}
+  }
+}
+
+/* ---------- rendering ---------- */
+function dayKey(ts){ return new Date(ts*1000).toISOString().slice(0,10); }
+var WHEN="today";
+function inWindow(u){
+  var now=new Date(), t0=new Date(now.getTime()); t0.setUTCHours(0,0,0,0);
+  var d=dayKey(u.ts), today=new Date().toISOString().slice(0,10);
+  var yd=new Date(Date.now()-864e5).toISOString().slice(0,10);
+  if(WHEN==="today") return d===today;
+  if(WHEN==="yday") return d===yd;
+  if(WHEN==="7d") return u.ts>=Date.now()/1000-3600 && u.ts<=Date.now()/1000+7*86400;
+  return true;
+}
+
+function bestBook(u){
+  var k=(u.home.name+"|"+u.away.name).toLowerCase(), books=ODDS[k];
+  if(!books||!books.length) return null;
+  var bh=0,ba=0,cons=[];
+  for(var i=0;i<books.length;i++){
+    if(books[i].h>bh) bh=books[i].h;
+    if(books[i].a>ba) ba=books[i].a;
+    cons.push(devig(books[i].h,books[i].a));
+  }
+  cons=cons.filter(function(v){return v!=null;});
+  var mkt=cons.length?cons.reduce(function(a,b){return a+b;},0)/cons.length:null;
+  return {books:books,bestH:bh,bestA:ba,mkt:mkt};
+}
+
+function slotSelect(u,sideKey,i,cur){
+  var t=T[String(u[sideKey].id)]||{}, pool=(t.pool||[]).slice();
+  var have={}; pool.forEach(function(p){have[String(p.id)]=1;});
+  if(cur&&!have[String(cur)]) pool.unshift({id:cur,g:0});
+  var o='<select data-lu data-side="'+sideKey+'" data-slot="'+i+'" data-pk="'+u.pk+'">';
+  for(var j=0;j<pool.length;j++){
+    var id=pool[j].id, p=P[String(id)]||{};
+    o+='<option value="'+id+'"'+(String(id)===String(cur)?" selected":"")+'>'+esc(p.name||("#"+id))
+      +(p.hand?" ("+p.hand+")":"")+(p.elo!=null?"  \u00b7  "+Math.round(p.elo)+(p.rank?"  \u00b7  #"+p.rank:""):"  \u00b7  unrated")+'</option>';
+  }
+  return o+'</select>';
+}
+function spSelect(u,sideKey,cur){
+  var t=T[String(u[sideKey].id)]||{}, rot=(t.rot||[]).slice();
+  var have={}; rot.forEach(function(p){have[String(p.id)]=1;});
+  if(cur&&!have[String(cur)]) rot.unshift({id:cur,g:0});
+  var o='<select data-sp data-side="'+sideKey+'" data-pk="'+u.pk+'">';
+  for(var j=0;j<rot.length;j++){
+    var id=rot[j].id, p=P[String(id)]||{};
+    o+='<option value="'+id+'"'+(String(id)===String(cur)?" selected":"")+'>'+esc(p.name||("#"+id))
+      +(p.hand?" ("+p.hand+"HP)":"")+(p.elo!=null?"  \u00b7  "+Math.round(p.elo)+(p.rank?"  \u00b7  #"+p.rank:""):"  \u00b7  unrated")+'</option>';
+  }
+  return o+'</select>';
+}
+
+function sideBlock(u,sideKey){
+  var lu=lineupOf(u,sideKey), sp=starterOf(u,sideKey), t=T[String(u[sideKey].id)]||{};
+  var s='<div><div class="k" style="margin-bottom:5px"><b>'+esc(u[sideKey].name)+'</b> &middot; Elo '+Math.round(t.elo||BASE)
+      +' &middot; bullpen '+Math.round(t.pen||BASE)+' &middot; '+(t.rec?t.rec[0]+"-"+t.rec[1]:"")+'</div>';
+  var p=P[String(sp)]||{};
+  s+='<div class="k" style="margin:7px 0 3px">Starting pitcher'+(p.ipgs?' &middot; '+p.ipgs+' IP per start &middot; K '+Math.round((p.k_pct||0)*100)+'% / BB '+Math.round((p.bb_pct||0)*100)+'%':'')+'</div>';
+  s+=spSelect(u,sideKey,sp);
+  var rest=spRest(sp,u.ts);
+  s+='<div class="k" style="margin-top:3px">'+(p.last?rest.toFixed(0)+" days rest":"rest unknown")
+     +(rest<4&&p.last?' <span class="pill w">short rest</span>':'')+'</div>';
+  s+='<div class="k" style="margin:9px 0 4px">Lineup'+(u[sideKey].lineup&&u[sideKey].lineup.length?'':' <span class="pill w">not posted</span>')+'</div>';
+  for(var i=0;i<9;i++){
+    s+='<div class="lu"><div class="o">'+(i+1)+'</div>'+slotSelect(u,sideKey,i,lu[i])+'</div>';
+  }
+  var miss=missing(u[sideKey].id,lu);
+  if(miss>0.2) s+='<div class="k" style="margin-top:4px"><span class="pill w">'+Math.round(miss*9)+' regulars not in this lineup</span></div>';
+  return s+'</div>';
+}
+
+function gameCard(u){
+  var r=modelP(u), bb=bestBook(u);
+  var pm=r.p, pb=blend(pm, bb?bb.mkt:null);
+  var s='<div class="g" data-pk="'+u.pk+'"><div class="gh"><div>'
+    +'<div class="gt">'+esc(u.away.name)+' @ '+esc(u.home.name)+'</div>'
+    +'<div class="gm">'+new Date(u.ts*1000).toLocaleString([], {weekday:"short",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})
+    +' &middot; '+esc(u.venue_name||"")+(u.__wx?' &middot; '+Math.round(u.__wx.temp)+'&deg;F'+(Math.abs(u.__wx.wind_out)>4?(u.__wx.wind_out>0?', wind out':', wind in'):''):'')+'</div></div>'
+    +'<div class="gp"><b>'+pct(pb)+'</b><span class="k">'+esc(u.home.name.split(" ").pop())+'</span></div></div>';
+
+  s+='<div class="gb">';
+  if(r.capped) s+='<div class="k" style="margin-bottom:7px"><span class="pill w">capped</span> the raw model said '+pct(r.raw)+'; no baseball game deserves more than '+pct(CAP)+'</div>';
+  if(r.ctx.__bvp_unknown) s+='<div class="k" style="margin-bottom:7px"><span class="pill">note</span> you changed a starter, so the batter-vs-pitcher history is not loaded for this matchup and counts as neutral</div>';
+
+  s+='<table><tr><th>&nbsp;</th><th class="n">Model</th><th class="n">Market</th><th class="n">Blended</th></tr>';
+  s+='<tr><td>'+esc(u.home.name)+'</td><td class="n">'+pct(pm)+'</td><td class="n">'+(bb&&bb.mkt!=null?pct(bb.mkt):"&mdash;")+'</td><td class="n"><b>'+pct(pb)+'</b></td></tr>';
+  s+='<tr><td>'+esc(u.away.name)+'</td><td class="n">'+pct(1-pm)+'</td><td class="n">'+(bb&&bb.mkt!=null?pct(1-bb.mkt):"&mdash;")+'</td><td class="n"><b>'+pct(1-pb)+'</b></td></tr></table>';
+
+  if(bb){
+    var eh=pb*bb.bestH-1, ea=(1-pb)*bb.bestA-1;
+    var kh=kelly(pb,bb.bestH), ka=kelly(1-pb,bb.bestA);
+    s+='<div class="k" style="margin:9px 0 4px">Best price across '+bb.books.length+' book'+(bb.books.length>1?"s":"")+'</div>';
+    s+='<table><tr><th>Side</th><th class="n">Best</th><th class="n">Edge</th><th class="n">Stake</th></tr>';
+    s+='<tr><td>'+esc(u.home.name)+'</td><td class="n">'+bb.bestH.toFixed(2)+'</td><td class="n '+(eh>0.02?"good":(eh<0?"bad":""))+'">'+(eh*100).toFixed(1)+'%</td><td class="n">'+(kh>0?kh.toFixed(2)+"u":"&mdash;")+'</td></tr>';
+    s+='<tr><td>'+esc(u.away.name)+'</td><td class="n">'+bb.bestA.toFixed(2)+'</td><td class="n '+(ea>0.02?"good":(ea<0?"bad":""))+'">'+(ea*100).toFixed(1)+'%</td><td class="n">'+(ka>0?ka.toFixed(2)+"u":"&mdash;")+'</td></tr></table>';
+    var mx=Math.max(eh,ea);
+    if(mx>0.08) s+='<div class="k" style="margin-top:6px"><span class="pill b">suspicious</span> an edge this big on a baseball moneyline is almost always a stale lineup or a scratched starter, not a mispriced game. Stake is capped at 0.5u.</div>';
+    else if(mx<0.02) s+='<div class="k" style="margin-top:6px">Nothing here. Under 2% is inside the noise.</div>';
+    s+='<details style="margin-top:7px"><summary class="k">every book</summary><table><tr><th>Book</th><th class="n">'+esc(u.home.name.split(" ").pop())+'</th><th class="n">'+esc(u.away.name.split(" ").pop())+'</th><th class="n">no-vig</th></tr>';
+    for(var i=0;i<bb.books.length;i++){ var b=bb.books[i]; var dv=devig(b.h,b.a);
+      s+='<tr><td>'+esc(b.book)+'</td><td class="n">'+b.h.toFixed(2)+'</td><td class="n">'+b.a.toFixed(2)+'</td><td class="n">'+(dv!=null?pct(dv):"&mdash;")+'</td></tr>'; }
+    s+='</table></details>';
+  } else {
+    s+='<div class="k" style="margin-top:8px">No odds loaded. Tap &ldquo;Load odds &amp; weather&rdquo; above.</div>';
+  }
+
+  s+='<div class="two" style="margin-top:12px">'+sideBlock(u,"away")+sideBlock(u,"home")+'</div>';
+
+  s+='<details style="margin-top:10px"><summary class="k">what moved this number</summary><table><tr><th>Factor</th><th class="n">Contribution</th></tr>';
+  var contrib=[];
+  for(var i2=0;i2<r.x.length;i2++){
+    var c2=(M.w[i2]||0)*((r.x[i2]-(M.mu[i2]||0))/((M.sd[i2]||1)||1));
+    contrib.push([M.features[i2]||("f"+i2),c2]);
+  }
+  contrib.sort(function(a,b){return Math.abs(b[1])-Math.abs(a[1]);});
+  for(var i3=0;i3<8;i3++){ if(!contrib[i3]) break;
+    s+='<tr><td>'+esc(contrib[i3][0])+'</td><td class="n '+(contrib[i3][1]>0?"good":"bad")+'">'+(contrib[i3][1]>0?"+":"")+contrib[i3][1].toFixed(3)+'</td></tr>'; }
+  s+='</table><div class="k" style="margin-top:5px">Positive favours '+esc(u.home.name)+'. These are log-odds contributions, not probabilities.</div></details>';
+
+  return s+'</div></div>';
+}
+
+function render(){
+  var list=U.filter(inWindow).sort(function(a,b){return a.ts-b.ts;});
+  $("games").innerHTML = list.length ? list.map(gameCard).join("")
+    : '<div class="card"><small>No games in this window. The model was built on '+esc(M.as_of||"?")+' and lists '+U.length+' scheduled games.</small></div>';
+  bind();
+}
+function bind(){
+  var hs=document.querySelectorAll(".gh");
+  for(var i=0;i<hs.length;i++) hs[i].onclick=function(e){
+    if(e.target.tagName==="SELECT"||e.target.tagName==="OPTION") return;
+    this.parentNode.classList.toggle("open");
+  };
+  var sels=document.querySelectorAll("select[data-lu]");
+  for(var j=0;j<sels.length;j++) sels[j].onchange=function(){
+    var pk=this.getAttribute("data-pk"), side=this.getAttribute("data-side"), slot=+this.getAttribute("data-slot");
+    var u=null; for(var k=0;k<U.length;k++) if(String(U[k].pk)===String(pk)) u=U[k];
+    if(!u) return;
+    var ov=get("lineup:"+pk)||{home:lineupOf(u,"home"),away:lineupOf(u,"away")};
+    ov[side]=ov[side]||lineupOf(u,side); ov[side][slot]=+this.value;
+    set("lineup:"+pk,ov); redraw(pk);
+  };
+  var sps=document.querySelectorAll("select[data-sp]");
+  for(var m2=0;m2<sps.length;m2++) sps[m2].onchange=function(){
+    var pk=this.getAttribute("data-pk"), side=this.getAttribute("data-side");
+    var ov=get("sp:"+pk)||{}; ov[side]=+this.value; set("sp:"+pk,ov); redraw(pk);
+  };
+}
+function redraw(pk){
+  var open={}; var gs=document.querySelectorAll(".g");
+  for(var i=0;i<gs.length;i++) if(gs[i].classList.contains("open")) open[gs[i].getAttribute("data-pk")]=1;
+  render();
+  var gs2=document.querySelectorAll(".g");
+  for(var j=0;j<gs2.length;j++) if(open[gs2[j].getAttribute("data-pk")]) gs2[j].classList.add("open");
+}
+
+/* ---------- ratings tab ---------- */
+function ratings(){
+  var ts=Object.keys(T).map(function(k){return {id:k,t:T[k]};}).sort(function(a,b){return b.t.elo-a.t.elo;});
+  var s='<div class="card"><h2>Team ratings</h2><table><tr><th>#</th><th>Team</th><th class="n">Elo</th><th class="n">Bullpen</th><th class="n">Sched</th><th class="n">L10</th></tr>';
+  for(var i=0;i<ts.length;i++) s+='<tr><td>'+(i+1)+'</td><td>'+esc(ts[i].t.name)+'</td><td class="n">'+Math.round(ts[i].t.elo)
+    +'</td><td class="n">'+Math.round(ts[i].t.pen)+'</td><td class="n">'+Math.round(ts[i].t.sos)+'</td><td class="n">'+Math.round((ts[i].t.form10||0)*100)+'%</td></tr>';
+  s+='</table></div>';
+  var sp=[],bt=[],k;
+  for(k in P){ if(P[k].t==="sp") sp.push(P[k]); else bt.push(P[k]); }
+  sp.sort(function(a,b){return a.rank-b.rank;}); bt.sort(function(a,b){return a.rank-b.rank;});
+  s+='<div class="card"><h2>Top starting pitchers</h2><table><tr><th>#</th><th>Pitcher</th><th class="n">Elo</th><th class="n">IP/GS</th><th class="n">K%</th></tr>';
+  for(var j=0;j<Math.min(sp.length,40);j++) s+='<tr><td>'+sp[j].rank+'</td><td>'+esc(sp[j].name)+' <small>'+esc(sp[j].hand||"")+'</small></td><td class="n">'+Math.round(sp[j].elo)+'</td><td class="n">'+(sp[j].ipgs||"")+'</td><td class="n">'+Math.round((sp[j].k_pct||0)*100)+'%</td></tr>';
+  s+='</table></div><div class="card"><h2>Top hitters</h2><table><tr><th>#</th><th>Hitter</th><th class="n">Elo</th><th class="n">wOBA</th><th class="n">PA</th></tr>';
+  for(var m=0;m<Math.min(bt.length,40);m++) s+='<tr><td>'+bt[m].rank+'</td><td>'+esc(bt[m].name)+' <small>'+esc(bt[m].hand||"")+'</small></td><td class="n">'+Math.round(bt[m].elo)+'</td><td class="n">'+(bt[m].woba!=null?bt[m].woba.toFixed(3):"")+'</td><td class="n">'+bt[m].pa+'</td></tr>';
+  return s+'</table></div>';
+}
+
+/* ---------- any two teams ---------- */
+function anyTwo(){
+  var opts=Object.keys(T).sort(function(a,b){return T[a].name<T[b].name?-1:1;})
+    .map(function(k){return '<option value="'+k+'">'+esc(T[k].name)+'</option>';}).join("");
+  return '<div class="card"><h2>Any two teams, neutral assumptions</h2>'
+    +'<div class="two"><div><div class="k">Home</div><select id="aH">'+opts+'</select></div>'
+    +'<div><div class="k">Away</div><select id="aA">'+opts+'</select></div></div>'
+    +'<div id="aOut" style="margin-top:11px"></div>'
+    +'<div class="k" style="margin-top:8px">This uses team, bullpen and run-prevention ratings with everything else neutral: league-average starters, no travel, no weather, no park effect. It answers &ldquo;who is the better team&rdquo;, not &ldquo;who wins tonight&rdquo;.</div></div>';
+}
+function anyCalc(){
+  var h=$("aH").value, a=$("aA").value;
+  if(!h||!a||h===a){ $("aOut").innerHTML='<small>Pick two different teams.</small>'; return; }
+  var th=T[h], ta=T[a];
+  var d={elo_h:th.elo,elo_a:ta.elo,sp_h:BASE,sp_a:BASE,lu_h:BASE,lu_a:BASE,pen_h:th.pen,pen_a:ta.pen,
+    def_h:th.def,def_a:ta.def,sp_rest_h:5,sp_rest_a:5,fat_h:0,fat_a:0,plat_h:4,plat_a:4,
+    form10_h:th.form10,form10_a:ta.form10,form30_h:th.form30,form30_a:ta.form30,sos_h:th.sos,sos_a:ta.sos,
+    wp_h:th.winpct,wp_a:ta.winpct,rest_h:1,rest_a:1,travel_a:0,tz_a:0,park:1,temp:72,wind_out:0,air:1,
+    night:true,dh:false,series:1,h2h:0,bat_vs_sp_h:0,bat_vs_sp_a:0,sp_vs_team_h:0,sp_vs_team_a:0,miss_h:0,miss_a:0};
+  var x=buildVector(d), z=M.b||0;
+  for(var i=0;i<x.length;i++) z+=(M.w[i]||0)*((x[i]-(M.mu[i]||0))/((M.sd[i]||1)||1));
+  var p=sig((M.temp||1)*lg(sig(z)));
+  var cap=false; if(p>CAP){p=CAP;cap=true;} if(p<1-CAP){p=1-CAP;cap=true;}
+  $("aOut").innerHTML='<div style="font-size:19px"><b>'+pct(p)+'</b> '+esc(th.name)+'</div>'
+    +'<div class="bar"><i style="width:'+(p*100)+'%"></i></div>'
+    +'<div class="k" style="margin-top:6px">'+esc(ta.name)+' '+pct(1-p)+(cap?' &middot; capped':'')+'</div>';
+}
+
+/* ---------- boot ---------- */
+(function(){
+  var age = M.as_of ? Math.round((Date.now()-Date.parse(M.as_of+"T00:00:00Z"))/864e5) : null;
+  var src = M.__remote ? "updated over the internet" : (window.__modelFailed ? "offline copy (could not reach the update server)" : "built-in copy");
+  $("hdr").innerHTML = "Trained on "+(M.games_used||0).toLocaleString()+" games, "+(M.seasons||[]).join("/")
+    +". Holdout accuracy "+Math.round((((M.holdout||{}).accuracy)||0)*1000)/10+"% against a "+Math.round((M.base_rate||0.54)*1000)/10+"% home-team base rate."
+    + (age!=null ? "<br>Ratings as of "+esc(M.as_of)+" &middot; "+(age<=1?"today":age+" days old")+" &middot; "+src : "");
+  render();
+  $("odds").onclick=function(){ this.disabled=true; var b=this; loadOdds().then(function(){ b.disabled=false; }); };
+  var wb=document.querySelectorAll("#when button");
+  for(var i=0;i<wb.length;i++) wb[i].onclick=function(){
+    for(var j=0;j<wb.length;j++) wb[j].classList.remove("on");
+    this.classList.add("on"); WHEN=this.getAttribute("data-w"); render();
+  };
+  var tb=document.querySelectorAll("#tabs button");
+  for(var k=0;k<tb.length;k++) tb[k].onclick=function(){
+    for(var m=0;m<tb.length;m++) tb[m].classList.remove("on");
+    this.classList.add("on");
+    var t=this.getAttribute("data-t"), views=["games","ratings","any","how"];
+    for(var n=0;n<views.length;n++) $("v-"+views[n]).style.display = views[n]===t?"":"none";
+    if(t==="ratings"&&!$("v-ratings").innerHTML) $("v-ratings").innerHTML=ratings();
+    if(t==="any"&&!$("v-any").innerHTML){ $("v-any").innerHTML=anyTwo();
+      if($("aA").options.length>1) $("aA").selectedIndex=1;   // never open with the same team twice
+      $("aH").onchange=anyCalc; $("aA").onchange=anyCalc; anyCalc(); }
+  };
+})();
+</script>
+</body>
+</html>
